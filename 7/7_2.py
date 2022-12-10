@@ -31,18 +31,27 @@ def populate_directories_with_size(_directory: Directory):
     for _file in _directory.files:
         file_size_sum += _file.size
     _directory.size += file_size_sum
+    if _directory.parent_directory:
+        add_size_to_parents(_directory.parent_directory, file_size_sum)
     if _directory.child_directories:
         for child_dir in _directory.child_directories.values():
             populate_directories_with_size(child_dir)
+
+
+def find_sorted_directories(_directory: Directory, output_list: list) -> list[Directory]:
+    output_list.append(_directory)
+    for child_dir in _directory.child_directories.items():
+        find_sorted_directories(child_dir[1], output_list)
+    return output_list
+
+
+def delete_dir(directory_name_to_delete, _directory: Directory) -> Directory:
+    if directory_name_to_delete == _directory.name:
+        add_size_to_parents(_directory.parent_directory, -_directory.size)
+        _directory.size = 0
     else:
-        add_size_to_parents(_directory.parent_directory, file_size_sum)
-
-
-def find_all_directories(_directory: Directory, directories: list):
-    directories.append(_directory.size)
-    for child_dir in _directory.child_directories.values():
-        find_all_directories(child_dir, directories)
-    return directories
+        for child_dir in _directory.child_directories.items():
+            delete_dir(directory_name_to_delete, child_dir[1])
 
 
 base_directory = Directory("/", {}, None, [], 0)
@@ -80,8 +89,19 @@ with open("input.csv") as csv_file:
 
 populate_directories_with_size(base_directory)
 
-directories = find_all_directories(base_directory, [])
+available_storage = 70000000
+needed_storage = 30000000
+used_storage = base_directory.size
+deletion_needed = available_storage-used_storage-needed_storage
 
-sum_of_directories = sum(directories)
+dirs = find_sorted_directories(base_directory, [])
+dirs.sort(key=lambda x: x.size)
 
-print(f'Sum of all directories = {sum(directories)}')
+for _dir in dirs:
+    if _dir.size >= -deletion_needed:
+        print(f'Dir size = {_dir.size}')
+
+print(f'Size before delete: {base_directory.size}')
+print(f'Deleting {dirs[0].size}')
+delete_dir(dirs[0].name, base_directory)
+print(f'Size after delete: {base_directory.size}')
